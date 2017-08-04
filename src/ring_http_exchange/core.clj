@@ -2,8 +2,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [ring.core.protocols :as protocols])
-  (:import [com.sun.net.httpserver
-            HttpServer HttpHandler HttpExchange  HttpsExchange]
+  (:import [com.sun.net.httpserver HttpServer HttpHandler HttpExchange]
            [java.io ByteArrayOutputStream File PrintWriter]
            [java.util.concurrent ArrayBlockingQueue ThreadPoolExecutor TimeUnit]
            [java.net InetSocketAddress]))
@@ -16,9 +15,7 @@
    :remote-addr  (.getHostString (.getRemoteAddress exchange))
    :uri (.getPath (.getRequestURI exchange))
    :query-string (.getQuery (.getRequestURI exchange))
-   :scheme             (if (instance? HttpsExchange exchange)
-                         :https
-                         :http)
+   :scheme             :http
    :request-method     (keyword (str/lower-case (.getRequestMethod exchange)))
    :protocol           (.getProtocol exchange)
    :headers            (->> (for [[k vs] (.getRequestHeaders exchange)]
@@ -83,30 +80,45 @@
       (finally
         (.flush (.getResponseBody exchange))))))
 
-(defn run-http-server [handler {:keys [http? host port
-                                       ssl? ssl-port
-                                       min-threads max-threads
-                                       max-queued-requests thread-idle-timeout] :as options
-                                :or {http? true host "127.0.0.1" port 8080
-                                     min-threads 8 max-threads 50
-                                     max-queued-requests 1024 thread-idle-timeout 60000}}]
-  (let [^HttpServer server (cond
-                             http?
-                             (HttpServer/create (InetSocketAddress. (str host) (int port)) 0)
+(defn ^HttpServer stop-http-server
+  "Stops a com.sun.net.httpserver.HttpServer with an optional
+  delay (in seconds) to allow active request to finish."
+  ([^HttpServer server]
+   (stop-http-server server 0))
+  ([^HttpServer server delay]
+   (doto server
+     (.stop delay))))
 
-                             ssl?
-                             (throw (UnsupportedOperationException.)))]
+(defn ^HttpServer  run-http-server
+  "Start a com.sun.net.httpserver.HttpServer to serve the given
+  handler according to the supplied options:
+
+  :port                 - the port to listen on (defaults to 8080)
+  :host                 - the hostname to listen on (defaults to 127.0.0.1)
+  :max-threads          - the maximum number of threads to use (default 50)
+  :min-threads          - the minimum number of threads to use (default 8)
+  :max-queued-requests  - the maximum number of requests to be queued (default 1024)
+  :thread-idle-timeout  - Set the maximum thread idle time. Threads that are idle
+                          for longer than this period may be stopped (default 60000)"
+  [handler {:keys [host port
+                   min-threads max-threads
+                   max-queued-requests thread-idle-timeout]
+            :as options
+            :or {host "127.0.0.1" port 8080
+                 min-threads 8 max-threads 50
+                 max-queued-requests 1024 thread-idle-timeout 60000}}]
+  (let [^HttpServer server (HttpServer/create (InetSocketAddress. (str host) (int port)) 0)]
     (try
       (doto server
-        (.setExecutor  (ThreadPoolExecutor. min-threads
-                                            max-threads
-                                            thread-idle-timeout
-                                            TimeUnit/MILLISECONDS
-                                            (ArrayBlockingQueue. max-queued-requests)))
+        (.setExecutor (ThreadPoolExecutor. min-threads
+                                           max-threads
+                                           thread-idle-timeout
+                                           TimeUnit/MILLISECONDS
+                                           (ArrayBlockingQueue. max-queued-requests)))
         (.createContext "/" (proxy [HttpHandler] []
                               (handle [exchange]
                                 (handle-http-exchange exchange handler options))))
         .start)
       (catch Throwable t
-        (.stop server 0)
+        (stop-http-server server)
         (throw t)))))

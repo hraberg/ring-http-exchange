@@ -1,20 +1,30 @@
 # ring-http-exchange
 
 Clojure [ring](https://github.com/ring-clojure/ring) adapter for
-[`com.sun.net.httpserver.HttpServer`](https://docs.oracle.com/javase/8/docs/jre/api/net/httpserver/spec/com/sun/net/httpserver/HttpServer.html).
+[`com.sun.net.httpserver.HttpServer`](https://docs.oracle.com/javase/8/docs/jre/api/net/httpserver/spec/com/sun/net/httpserver/HttpServer.html)
+which is included in the JDK.
 
-HTTP only for now.
+The main motivation for this is to support starting a small HTTP
+server inside an application which itself isn't necessary primarily a
+web app, while avoiding adding any new dependencies on the classpath
+(apart from ring-core). It could also be used for tests.
+
+HTTP only for now. Untested.
 
 ## Usage
 
 ``` clojure
 (run-http-server
-  (fn [req]
-    {:body "Hello World"
-     :headers {"content-type" "text/plain"}
-     :status 200})
+  (fn [request]
+    {:status 200
+     :headers {"Content-Type" "text/plain"}
+     :body "Hello World"}
   {:port 8080})
 ```
+
+The options are a subset of the ones support by
+[ring-jetty-adapter](https://github.com/ring-clojure/ring/tree/master/ring-jetty-adapter). See
+docstring for details.
 
 ## License
 
