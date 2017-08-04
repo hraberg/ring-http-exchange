@@ -10,11 +10,11 @@
 (set! *warn-on-reflection* true)
 
 (defn- http-exchange->request-map [^HttpExchange exchange]
-  {:server-port (.getPort (.getLocalAddress exchange))
-   :server-name (.getHostName (.getLocalAddress exchange))
-   :remote-addr  (.getHostString (.getRemoteAddress exchange))
-   :uri (.getPath (.getRequestURI exchange))
-   :query-string (.getQuery (.getRequestURI exchange))
+  {:server-port        (.getPort (.getLocalAddress exchange))
+   :server-name        (.getHostName (.getLocalAddress exchange))
+   :remote-addr        (.getHostString (.getRemoteAddress exchange))
+   :uri                (.getPath (.getRequestURI exchange))
+   :query-string       (.getQuery (.getRequestURI exchange))
    :scheme             :http
    :request-method     (keyword (str/lower-case (.getRequestMethod exchange)))
    :protocol           (.getProtocol exchange)
