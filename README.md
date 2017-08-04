@@ -14,7 +14,9 @@ HTTP only for now. Untested.
 ## Usage
 
 ``` clojure
-(run-http-server
+(require 'ring-http-exchange.core)
+
+(ring-http-exchange.core/run-http-server
   (fn [request]
     {:status 200
      :headers {"Content-Type" "text/plain"}
